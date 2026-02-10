@@ -164,7 +164,14 @@ export default function Home() {
         "--sjs-border-default": "#6B8EA6",
         "--sjs-border-light": "#d1d5db",
         "--sjs-special-background": "#6B8EA6",
-        "--sjs-font-family": "var(--font-nanum-gothic), sans-serif"
+        "--sjs-font-family": "var(--font-nanum-gothic), sans-serif",
+        "--sjs-font-size": "12px",
+        "--sjs-font-questiontitle-size": "12px",
+        "--sjs-font-questiondescription-size": "10px",
+        "--sjs-font-editorfont-size": "11px",
+        "--sjs-font-pagetitle-size": "14px",
+        "--sjs-font-pagedescription-size": "11px",
+        "--sjs-font-questiontitle-weight": "600"
       },
       "themeName": "custom",
       "colorPalette": "light"
