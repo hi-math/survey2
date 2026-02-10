@@ -1,9 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signInWithRedirect, getRedirectResult, signInAnonymously, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { signInWithRedirect, signInWithPopup, signInAnonymously, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+
+const isMobile = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth < 768);
+};
 
 const isInAppBrowser = () => {
   if (typeof navigator === 'undefined') return false;
@@ -11,7 +16,7 @@ const isInAppBrowser = () => {
   return /KAKAOTALK|FBAN|FBAV|Instagram|NAVER|Line|DaumApps/i.test(ua);
 };
 
-const openExternalBrowser = () => {
+const openExternalBrowser = (silent = false) => {
   const url = window.location.href;
   const ua = navigator.userAgent || '';
   const isAndroid = /Android/i.test(ua);
@@ -23,35 +28,33 @@ const openExternalBrowser = () => {
   }
   if (isIOS) {
     window.open(url, '_blank');
-    alert('카카오톡 브라우저에서는 로그인할 수 없습니다. Safari에서 열어주세요.');
+    if (!silent) {
+      alert('카카오톡 브라우저에서는 로그인할 수 없습니다. Safari에서 열어주세요.');
+    }
     return;
   }
   window.open(url, '_blank');
 };
 
-export default function LoginPage() {
+interface LoginPageProps {
+  initialError?: string | null;
+  onClearError?: () => void;
+}
+
+export default function LoginPage({ initialError = null, onClearError }: LoginPageProps) {
   const [showManualLogin, setShowManualLogin] = useState(false);
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const displayError = error || initialError || '';
+
+  // 인앱 브라우저(카카오톡 등)에서는 버튼 없이 자동으로 외부 브라우저 열기 시도
   useEffect(() => {
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result?.user) return;
-        await setDoc(doc(db, 'users', result.user.uid), {
-          email: result.user.email,
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL,
-          loginMethod: 'google',
-          createdAt: new Date(),
-        });
-      })
-      .catch((err) => {
-        console.error('Redirect login error:', err);
-        setError('구글 로그인에 실패했습니다. 다시 시도해주세요.');
-      });
+    if (typeof window === 'undefined' || !isInAppBrowser()) return;
+    const t = setTimeout(() => openExternalBrowser(true), 400);
+    return () => clearTimeout(t);
   }, []);
 
   const handleGoogleLogin = async () => {
@@ -59,11 +62,31 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       setError('');
+      onClearError?.();
       await setPersistence(auth, browserSessionPersistence);
-      await signInWithRedirect(auth, googleProvider);
-    } catch (err) {
-      console.error('Google login error:', err);
-      setError('구글 로그인에 실패했습니다. 다시 시도해주세요.');
+
+      if (isMobile()) {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      }
+
+      const result = await signInWithPopup(auth, googleProvider);
+      if (result?.user) {
+        await setDoc(doc(db, 'users', result.user.uid), {
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          loginMethod: 'google',
+          createdAt: new Date(),
+        });
+      }
+    } catch (err: unknown) {
+      const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : undefined;
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[구글 로그인] 오류:', { err, code, message });
+      const detail = code ? `[${code}] ${message}` : message;
+      setError(`구글 로그인 실패. ${detail}`);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -96,25 +119,37 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen p-4 pb-10" style={{ backgroundColor: 'var(--bg-main)' }}>
       <div className="page-frame space-y-4">
-        {/* 상단 타이틀 카드: 강조 */}
-        <div className="screen-header text-center">
-          <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text)' }}>
+        {/* 상단 타이틀: 강조 */}
+        <div className="text-center py-2">
+          <h1
+            className="text-3xl font-black tracking-tight"
+            style={{ color: 'var(--text)' }}
+          >
             강의 전 설문
           </h1>
         </div>
 
-        {/* 안내 및 개인정보 카드 */}
-        <div className="card">
-          <p className="text-sm leading-relaxed text-center" style={{ color: 'var(--text)' }}>
+        {/* 안내 및 개인정보: 구분되는 카드 (짙은 음영, 밝은 텍스트) */}
+        <div
+          className="rounded-2xl p-5"
+          style={{
+            backgroundColor: 'var(--card-shade)',
+            color: 'var(--card-shade-text)',
+          }}
+        >
+          <p className="text-sm leading-relaxed text-center m-0" style={{ color: 'var(--card-shade-text)' }}>
             강의는 함께 만들어나가는 것입니다. 솔직한 응답을 부탁드립니다. 설문 응답으로 알게 된 개인 정보는 암호화 되어 처리됩니다.
           </p>
         </div>
 
         {/* 로그인 카드 */}
         <div className="card">
-          {error && (
-            <div className="mb-4 p-3 rounded-xl text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#b91c1c' }}>
-              {error}
+          {displayError && (
+            <div className="mb-4 p-3 rounded-xl text-sm space-y-2" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#b91c1c' }}>
+              <p className="m-0">{displayError}</p>
+              <p className="m-0 text-xs opacity-90">
+                에러 상세: 브라우저에서 <kbd className="px-1 rounded bg-black/10">F12</kbd> → Console 탭에서 &quot;[구글 로그인]&quot; 로그 확인
+              </p>
             </div>
           )}
 
@@ -123,11 +158,11 @@ export default function LoginPage() {
               {isInAppBrowser() ? (
                 <div className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)' }}>
                   <p className="text-sm mb-3" style={{ color: 'var(--text)' }}>
-                    카카오톡 브라우저에서는 Google 로그인이 제한됩니다.
+                    잠시 후 Chrome/Safari로 이동합니다. 이동되지 않으면 아래 버튼을 눌러주세요.
                   </p>
                   <button
                     type="button"
-                    onClick={openExternalBrowser}
+                    onClick={() => openExternalBrowser(false)}
                     style={{ backgroundColor: 'var(--primary)', color: 'white' }}
                     className="w-full font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity"
                   >
