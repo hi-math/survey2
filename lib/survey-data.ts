@@ -62,12 +62,14 @@ export const SECTION1_COMMENTS = [
 
 export const SECTION2_TITLE = "※ 다음은 과학에 대한 현재 자신의 태도를 알아보는 문항입니다.";
 
-export const MATRIX_COLUMNS = [
+export type MatrixColumn = { value: string; text: string; display: string };
+
+export const MATRIX_COLUMNS: readonly MatrixColumn[] = [
   { value: "1", text: "전혀 그렇지 않다", display: "전혀\n그렇지 않다" },
   { value: "2", text: "그렇지 않은 편이다", display: "그렇지\n않은\n편이다." },
   { value: "3", text: "그런 편이다", display: "그런\n편이다" },
   { value: "4", text: "매우 그렇다", display: "매우\n그렇다" },
-] as const;
+];
 
 export const MATRIX_ROWS = [
   { value: "q1", text: "1. 과학과 관련된 이슈에 대한 관심이 매우 높다." },

@@ -62,7 +62,7 @@ export default function SurveySection2({
                     border: "1px solid var(--border)",
                   }}
                 >
-                  <span className="block leading-tight whitespace-pre-line">{col.display ?? col.text}</span>
+                  <span className="block leading-tight whitespace-pre-line">{col.display}</span>
                 </th>
               ))}
             </tr>
