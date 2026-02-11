@@ -1,26 +1,114 @@
 'use client';
 
 import CheckCircleIcon from '@/components/icons/CheckCircleIcon';
+import type { ScoreResult } from '@/lib/score';
 
 interface SurveyCompletePageProps {
+  scoreResult?: ScoreResult | null;
   onEditSurvey: () => void;
   onStartOver: () => void;
 }
 
-export default function SurveyCompletePage({ onEditSurvey, onStartOver }: SurveyCompletePageProps) {
+const gradeColors: Record<string, { bg: string; border: string; accent: string }> = {
+  high: { bg: '#EEF7EE', border: '#4CAF50', accent: '#2E7D32' },
+  mid:  { bg: '#FFF8E1', border: '#FFB300', accent: '#F57F17' },
+  low:  { bg: '#FDE8E8', border: '#E57373', accent: '#C62828' },
+};
+
+const gradeEmoji: Record<string, string> = {
+  high: '🔬',
+  mid:  '🌱',
+  low:  '🚀',
+};
+
+const gradeImage: Record<string, string> = {
+  high: '/image/1.png',
+  mid:  '/image/2.png',
+  low:  '/image/3.png',
+};
+
+export default function SurveyCompletePage({ scoreResult, onEditSurvey, onStartOver }: SurveyCompletePageProps) {
+  const colors = scoreResult ? gradeColors[scoreResult.grade] : null;
+  const emoji = scoreResult ? gradeEmoji[scoreResult.grade] : '';
+
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 pb-10" style={{ backgroundColor: 'var(--bg-main)' }}>
       <div className="page-frame w-full max-w-md">
         <div className="card text-center">
           <div className="flex justify-center mb-4">
-            <CheckCircleIcon size={72} />
+            <CheckCircleIcon size={56} />
           </div>
           <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--text)' }}>
-            감사합니다!
+            설문이 완료되었습니다!
           </h2>
           <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
             소중한 의견 감사드립니다.
           </p>
+
+          {/* 점수 결과 카드 */}
+          {scoreResult && colors && (
+            <div
+              className="rounded-2xl p-5 mb-6 text-left"
+              style={{
+                backgroundColor: colors.bg,
+                border: `2px solid ${colors.border}`,
+              }}
+            >
+              {/* 점수 표시 */}
+              <div className="text-center mb-4">
+                <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
+                  과학 태도 점수
+                </p>
+                <p className="text-4xl font-black" style={{ color: colors.accent }}>
+                  {scoreResult.total}<span className="text-lg font-normal" style={{ color: 'var(--text-muted)' }}> / {scoreResult.maxScore}</span>
+                </p>
+              </div>
+
+              {/* 점수 바 */}
+              <div className="w-full h-3 rounded-full mb-4" style={{ backgroundColor: '#e0e0e0' }}>
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${(scoreResult.total / scoreResult.maxScore) * 100}%`,
+                    backgroundColor: colors.border,
+                  }}
+                />
+              </div>
+
+              {/* 유형 타이틀 */}
+              <div className="text-center mb-3">
+                <span className="text-3xl">{emoji}</span>
+                <h3 className="text-lg font-bold mt-1" style={{ color: colors.accent }}>
+                  {scoreResult.title}
+                </h3>
+              </div>
+
+              {/* 유형 이미지 */}
+              <div className="w-full rounded-xl mb-4 flex items-center justify-center overflow-hidden">
+                <img
+                  src={gradeImage[scoreResult.grade]}
+                  alt={scoreResult.title}
+                  className="w-full h-auto rounded-xl"
+                  style={{ maxHeight: '280px', objectFit: 'contain' }}
+                />
+              </div>
+
+              {/* 설명 */}
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>
+                {scoreResult.description}
+              </p>
+
+              {/* 점수 구간 범례 */}
+              <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }}>
+                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>점수 구간 안내</p>
+                <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span>🔬 30점 이상: 과학에 대한 자신감 뿜뿜형</span>
+                  <span>🌱 20~29점: 과학에 대한 관심 친화형</span>
+                  <span>🚀 19점 이하: 과학은 아직은 가까이 하기엔 너무 먼 당신형</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col gap-3">
             <button

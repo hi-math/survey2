@@ -9,6 +9,7 @@ import UserInfoForm from "@/components/UserInfoForm";
 import SurveyCompletePage from "@/components/SurveyCompletePage";
 import CustomSurvey from "@/components/survey/CustomSurvey";
 import type { SurveyData } from "@/types/survey";
+import { calcScienceAttitudeScore, type ScoreResult } from "@/lib/score";
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -17,6 +18,7 @@ export default function Home() {
   const [needsUserInfo, setNeedsUserInfo] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [initialSurveyData, setInitialSurveyData] = useState<SurveyData | null>(null);
+  const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
 
   // signInWithPopup 방식이므로 onAuthStateChanged만으로 충분
   useEffect(() => {
@@ -46,9 +48,13 @@ export default function Home() {
 
   const handleSurveySubmit = async (data: SurveyData) => {
     if (!user) return;
+    const result = calcScienceAttitudeScore(data);
+    setScoreResult(result);
     await setDoc(doc(db, "surveys", user.uid), {
       userId: user.uid,
       completedAt: new Date().toISOString(),
+      scoreTotal: result.total,
+      scoreGrade: result.grade,
       ...data,
     });
     setSurveyCompleted(true);
@@ -89,6 +95,7 @@ export default function Home() {
   if (surveyCompleted) {
     return (
       <SurveyCompletePage
+        scoreResult={scoreResult}
         onEditSurvey={async () => {
           if (!user) return;
           try {

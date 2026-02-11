@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signInWithPopup, signInAnonymously, setPersistence, browserSessionPersistence } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, signInAnonymously, setPersistence, browserSessionPersistence, getRedirectResult } from 'firebase/auth';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -52,6 +52,32 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
     return () => clearTimeout(t);
   }, []);
 
+  // redirect 폴백 결과 처리
+  useEffect(() => {
+    if (typeof window === 'undefined' || !auth) return;
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          console.log('[구글 로그인] redirect 성공:', result.user.uid);
+          await setDoc(doc(db, 'users', result.user.uid), {
+            email: result.user.email,
+            displayName: result.user.displayName,
+            photoURL: result.user.photoURL,
+            loginMethod: 'google',
+            createdAt: new Date(),
+          });
+        }
+      })
+      .catch((err) => {
+        const code = err?.code;
+        const message = err instanceof Error ? err.message : JSON.stringify(err);
+        console.error('[구글 로그인] redirect 결과 오류:', { code, message });
+        if (code && code !== 'auth/popup-closed-by-user') {
+          setError(`구글 로그인 실패. [${code}] ${message}`);
+        }
+      });
+  }, []);
+
   // Vercel 등 배포 환경에서 로그인 실패 원인 파악용 (F12 → Console)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -84,8 +110,20 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       }
     } catch (err: unknown) {
       const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : undefined;
-      const message = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : JSON.stringify(err);
       console.error('[구글 로그인] 오류:', { err, code, message });
+
+      // 팝업 차단 또는 팝업 관련 실패 시 redirect 방식으로 폴백
+      if (code === 'auth/popup-blocked' || code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        console.log('[구글 로그인] 팝업 실패, redirect 방식으로 전환');
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectErr) {
+          console.error('[구글 로그인] redirect도 실패:', redirectErr);
+        }
+      }
+
       const detail = code ? `[${code}] ${message}` : message;
       setError(`구글 로그인 실패. ${detail}`);
     } finally {
