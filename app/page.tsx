@@ -41,7 +41,7 @@ export default function Home() {
         const snap = await getDoc(doc(db, "users", user.uid));
         const data = snap.exists() ? snap.data() : null;
         setNeedsUserInfo(!snap.exists() || !data?.displayName);
-        setUserLoginMethod((data?.loginMethod === "manual" ? "manual" : "google") ?? null);
+        setUserLoginMethod(data == null ? null : data.loginMethod === "manual" ? "manual" : "google");
       } catch {
         setNeedsUserInfo(true);
         setUserLoginMethod(null);
