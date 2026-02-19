@@ -22,9 +22,9 @@ const gradeEmoji: Record<string, string> = {
 };
 
 const gradeImage: Record<string, string> = {
-  high: '/image/1 (2).png',
-  mid:  '/image/2 (2).png',
-  low:  '/image/3 (3).png',
+  high: '/image/1.png',
+  mid:  '/image/2.png',
+  low:  '/image/3.png',
 };
 
 export default function SurveyCompletePage({ scoreResult, onEditSurvey, onStartOver }: SurveyCompletePageProps) {
