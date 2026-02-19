@@ -4,8 +4,8 @@ import { MATRIX_ROWS } from "@/lib/survey-data";
 export type ScoreGrade = "high" | "mid" | "low";
 
 export interface ScoreResult {
-  total: number;       // 합산 점수 (0~40)
-  maxScore: number;    // 만점 (40)
+  total: number;       // 합산 점수 (0~60)
+  maxScore: number;    // 만점 (60)
   grade: ScoreGrade;
   title: string;
   description: string;
@@ -20,27 +20,27 @@ export function calcScienceAttitudeScore(data: SurveyData): ScoreResult {
     total += val ? parseInt(val, 10) : 0;
   }
 
-  const maxScore = MATRIX_ROWS.length * 4; // 40
+  const maxScore = MATRIX_ROWS.length * 4; // 60
 
   let grade: ScoreGrade;
   let title: string;
   let description: string;
 
-  if (total >= 30) {
+  if (total >= 50) {
     grade = "high";
-    title = "과학에 대한 자신감 뿜뿜형";
+    title = "AI 동행자";
     description =
-      "당신은 과학에 대한 자신감과 흥미가 매우 높습니다! 과학적 사고방식이 이미 일상에 깊이 스며들어 있으며, 새로운 과학 지식을 배우는 것에 큰 즐거움을 느끼고 있습니다. 이번 강의를 통해 그 열정을 더욱 깊이 있게 발전시켜 보세요.";
-  } else if (total >= 20) {
+      "AI와 이미 잘 어울려 일상과 학습에 활용하고 계시네요. 답변을 꼼꼼히 확인하고, 피드백이나 형식·스타일까지 요구하는 등 자신만의 기준으로 쓰고 있습니다. 이번 강의에서 그 경험을 나누고 더 깊이 써보는 시간이 되길 바랍니다.";
+  } else if (total >= 40) {
     grade = "mid";
-    title = "과학에 대한 관심 친화형";
+    title = "AI 탐색자";
     description =
-      "당신은 과학에 대해 적당한 관심과 호기심을 가지고 있습니다. 아직 깊이 빠져들진 않았지만, 과학이 일상과 연결되어 있다는 것을 느끼고 있죠. 이번 강의가 과학과 더 가까워지는 좋은 계기가 될 것입니다.";
+      "AI에 관심이 있고 조금씩 써 보신 경험이 있습니다. 아직 모든 기능까지는 쓰지 않았지만, 도움이 된다는 걸 느끼고 있는 단계예요. 이번 강의에서 다양한 활용법을 탐색해 보시면 좋겠습니다.";
   } else {
     grade = "low";
-    title = "과학은 아직은 가까이 하기엔 너무 먼 당신형";
+    title = "AI 관찰자";
     description =
-      "과학이 아직은 조금 낯설고 어렵게 느껴질 수 있습니다. 하지만 걱정 마세요! 누구나 처음은 있는 법이니까요. 이번 강의를 통해 과학이 생각보다 재미있고 우리 생활에 밀접하다는 것을 발견하게 될 거예요.";
+      "AI는 아직 조금 낯설거나 막연하게 느껴질 수 있습니다. 괜찮아요. 이번 강의에서 단계적으로 활용법을 익히고, 직접 써 보며 산출물을 만드는 경험을 해 보시면 한걸음 가까워질 거예요.";
   }
 
   return { total, maxScore, grade, title, description };

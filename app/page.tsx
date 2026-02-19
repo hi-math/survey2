@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import LoginPage from "@/components/LoginPage";
 import UserInfoForm from "@/components/UserInfoForm";
 import SurveyCompletePage from "@/components/SurveyCompletePage";
@@ -16,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [needsUserInfo, setNeedsUserInfo] = useState(false);
+  const [userLoginMethod, setUserLoginMethod] = useState<"google" | "manual" | null>(null);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [initialSurveyData, setInitialSurveyData] = useState<SurveyData | null>(null);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
@@ -38,9 +39,12 @@ export default function Home() {
     const check = async () => {
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
-        setNeedsUserInfo(!snap.exists() || !snap.data()?.displayName);
+        const data = snap.exists() ? snap.data() : null;
+        setNeedsUserInfo(!snap.exists() || !data?.displayName);
+        setUserLoginMethod((data?.loginMethod === "manual" ? "manual" : "google") ?? null);
       } catch {
         setNeedsUserInfo(true);
+        setUserLoginMethod(null);
       }
     };
     check();
@@ -48,9 +52,16 @@ export default function Home() {
 
   const handleSurveySubmit = async (data: SurveyData) => {
     if (!user) return;
+    if (data.studentId?.trim() && data.displayName?.trim()) {
+      await updateDoc(doc(db, "users", user.uid), {
+        studentId: data.studentId.trim(),
+        displayName: data.displayName.trim(),
+        updatedAt: new Date(),
+      });
+    }
     const result = calcScienceAttitudeScore(data);
     setScoreResult(result);
-    await setDoc(doc(db, "surveys", user.uid), {
+    await setDoc(doc(db, "survey2", user.uid), {
       userId: user.uid,
       completedAt: new Date().toISOString(),
       scoreTotal: result.total,
@@ -99,7 +110,7 @@ export default function Home() {
         onEditSurvey={async () => {
           if (!user) return;
           try {
-            const snap = await getDoc(doc(db, "surveys", user.uid));
+            const snap = await getDoc(doc(db, "survey2", user.uid));
             if (snap.exists()) {
               const raw = snap.data();
               const { userId: _u, completedAt: _t, ...surveyData } = raw;

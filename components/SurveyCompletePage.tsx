@@ -22,9 +22,9 @@ const gradeEmoji: Record<string, string> = {
 };
 
 const gradeImage: Record<string, string> = {
-  high: '/image/1.png',
-  mid:  '/image/2.png',
-  low:  '/image/3.png',
+  high: '/image/1 (2).png',
+  mid:  '/image/2 (2).png',
+  low:  '/image/3 (3).png',
 };
 
 export default function SurveyCompletePage({ scoreResult, onEditSurvey, onStartOver }: SurveyCompletePageProps) {
@@ -54,10 +54,10 @@ export default function SurveyCompletePage({ scoreResult, onEditSurvey, onStartO
                 border: `2px solid ${colors.border}`,
               }}
             >
-              {/* 점수 표시 */}
+              {/* 점수 표시 (15문항, 만점 60) */}
               <div className="text-center mb-4">
                 <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
-                  과학 태도 점수
+                  AI 활용 태도 점수 (15문항)
                 </p>
                 <p className="text-4xl font-black" style={{ color: colors.accent }}>
                   {scoreResult.total}<span className="text-lg font-normal" style={{ color: 'var(--text-muted)' }}> / {scoreResult.maxScore}</span>
@@ -84,11 +84,11 @@ export default function SurveyCompletePage({ scoreResult, onEditSurvey, onStartO
               </div>
 
               {/* 유형 이미지 */}
-              <div className="w-full rounded-xl mb-4 flex items-center justify-center overflow-hidden">
+              <div className="w-full rounded-[2rem] mb-4 flex items-center justify-center overflow-hidden">
                 <img
                   src={gradeImage[scoreResult.grade]}
                   alt={scoreResult.title}
-                  className="w-full h-auto rounded-xl"
+                  className="w-full h-auto rounded-[2rem]"
                   style={{ maxHeight: '280px', objectFit: 'contain' }}
                 />
               </div>
@@ -97,16 +97,6 @@ export default function SurveyCompletePage({ scoreResult, onEditSurvey, onStartO
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text)' }}>
                 {scoreResult.description}
               </p>
-
-              {/* 점수 구간 범례 */}
-              <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(0,0,0,0.1)' }}>
-                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>점수 구간 안내</p>
-                <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-                  <span>🔬 30점 이상: 과학에 대한 자신감 뿜뿜형</span>
-                  <span>🌱 20~29점: 과학에 대한 관심 친화형</span>
-                  <span>🚀 19점 이하: 과학은 아직은 가까이 하기엔 너무 먼 당신형</span>
-                </div>
-              </div>
             </div>
           )}
 

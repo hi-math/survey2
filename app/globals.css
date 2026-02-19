@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
-/* 첨부 이미지 스타일: 배경 흰색, 헤더 연한 앰버 #FFF0D7, 플랫 */
+/* 컬러 팔레트: 다크 네이비 → 슬레이트 블루 → 미디엄 블루 → 파스텔 핑크 → 연한 그레이 */
 :root {
-  --bg-main: #ffffff;
-  --card-bg: #FFFBF7;
-  --shade-bg: #FFF0D7;
-  --header-title: #8B7BA8;
-  --table-header-bg: #5D4171;
-  --card-shade: #6B5B7A;
-  --card-shade-text: #f5f0fa;
-  --info-card-bg: #1a5f5e;
-  --info-card-text: #e0f2f1;
-  --primary: #E8A84A;
-  --primary-hover: #d99738;
-  --secondary: #8C55E8;
-  --secondary-hover: #7a3ed6;
-  --text: #404040;
-  --text-muted: #737373;
-  --border: #e8e2d8;
-  --checkbox-checked: #B8A9D4;
-  --question-bar: #F78C3D;
+  --bg-main: #f0f2f5;
+  --card-bg: #f5f6f8;
+  --shade-bg: #4a5f73;
+  --header-title: #f0f2f5;
+  --table-header-bg: #1e2a3d;
+  --card-shade: #5a6b7c;
+  --card-shade-text: #f0f2f5;
+  --info-card-bg: #4a5f73;
+  --info-card-text: #f0f2f5;
+  --primary: #5a7a99;
+  --primary-hover: #4a6a89;
+  --secondary: #d4a5a9;
+  --secondary-hover: #c49599;
+  --text: #1e2a3d;
+  --text-muted: #4a5f73;
+  --border: #d0d6e0;
+  --checkbox-checked: #6b8caa;
+  --question-bar: #1e2a3d;
   --radius: 1rem;
   --radius-lg: 1.25rem;
 }
@@ -121,7 +121,7 @@ main {
 
 /* 미응답 행 음영 (커스텀 설문 매트릭스) - 옅게 */
 .matrix-row-unanswered td {
-  background-color: rgba(140, 85, 232, 0.06) !important;
+  background-color: rgba(212, 165, 169, 0.12) !important;
 }
 
 /* 매트릭스 라디오: 체크박스 스타일(내부 점 없음) */
