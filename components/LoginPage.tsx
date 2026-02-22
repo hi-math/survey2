@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signInWithPopup, signInWithRedirect, signInAnonymously, setPersistence, browserSessionPersistence, getRedirectResult } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, signInAnonymously, setPersistence, browserSessionPersistence, getRedirectResult, signOut, type User } from 'firebase/auth';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -47,6 +47,7 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
   const [showManualLogin, setShowManualLogin] = useState(false);
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
+  const [pendingGoogleUser, setPendingGoogleUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -66,15 +67,10 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       .then(async (result) => {
         if (result?.user) {
           console.log('[구글 로그인] redirect 성공:', result.user.uid);
-          const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
-          await setDoc(doc(db, 'users', result.user.uid), {
-            email: result.user.email,
-            displayName: result.user.displayName,
-            photoURL: result.user.photoURL,
-            loginMethod: 'google',
-            course: courseLabel,
-            createdAt: new Date(),
-          });
+          // 사용자에게 학번/이름을 입력받은 뒤에 Firestore에 저장하도록 대기 상태로 전환
+          setPendingGoogleUser(result.user);
+          setName(result.user.displayName ?? '');
+          setStudentId('');
         }
       })
       .catch((err) => {
@@ -109,15 +105,10 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       // 모든 환경에서 signInWithPopup 사용 (signInWithRedirect는 최신 브라우저에서 third-party cookie 차단으로 실패함)
       const result = await signInWithPopup(auth, googleProvider);
       if (result?.user) {
-        const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
-        await setDoc(doc(db, 'users', result.user.uid), {
-          email: result.user.email,
-          displayName: result.user.displayName,
-          photoURL: result.user.photoURL,
-          loginMethod: 'google',
-          course: courseLabel,
-          createdAt: new Date(),
-        });
+        // 바로 저장하지 말고 학번/이름 입력을 요청
+        setPendingGoogleUser(result.user);
+        setName(result.user.displayName ?? '');
+        setStudentId('');
       }
     } catch (err: unknown) {
       const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : undefined;
@@ -137,6 +128,37 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
 
       const detail = code ? `[${code}] ${message}` : message;
       setError(`구글 로그인 실패. ${detail}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleInfoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingGoogleUser) return;
+    if (!studentId.trim() || !name.trim()) {
+      setError('학번과 이름을 모두 입력해주세요.');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      setError('');
+      const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
+      await setDoc(doc(db, 'users', pendingGoogleUser.uid), {
+        uid: pendingGoogleUser.uid,
+        email: pendingGoogleUser.email,
+        displayName: name.trim(),
+        photoURL: pendingGoogleUser.photoURL,
+        studentId: studentId.trim(),
+        loginMethod: 'google',
+        course: courseLabel,
+        createdAt: new Date(),
+      });
+      setPendingGoogleUser(null);
+      setStudentId('');
+    } catch (err) {
+      console.error('[구글 로그인] 정보 저장 오류:', err);
+      setError('정보 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -254,57 +276,69 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
             </div>
           )}
 
-          {!showManualLogin ? (
-            <div className="space-y-4">
-              {isInAppBrowser() ? (
-                <div className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)' }}>
-                  <p className="text-sm mb-3" style={{ color: 'var(--text)' }}>
-                    잠시 후 Chrome/Safari로 이동합니다. 이동되지 않으면 아래 버튼을 눌러주세요.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => openExternalBrowser(false)}
-                    style={{ backgroundColor: 'var(--primary)', color: 'white' }}
-                    className="w-full font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity"
-                  >
-                    Chrome/Safari로 열기
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={handleGoogleLogin}
-                  disabled={isLoading}
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
-                  className="w-full border-2 font-semibold py-4 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-3 disabled:opacity-50"
-                >
-                  <svg className="w-6 h-6" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                  </svg>
-                  {isLoading ? '로그인 중...' : '구글 계정으로 로그인'}
-                </button>
-              )}
-
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t" style={{ borderColor: 'var(--border)' }} />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="px-3 text-sm" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-muted)' }}>또는</span>
-                </div>
+          {pendingGoogleUser ? (
+            <form onSubmit={handleGoogleInfoSubmit} className="space-y-4">
+              <div className="text-sm" style={{ color: 'var(--text)' }}>
+                <p className="m-0 mb-2">구글 계정으로 로그인되었습니다:</p>
+                <p className="m-0 mb-3 font-medium">{pendingGoogleUser.email}</p>
               </div>
-
-              <button
-                onClick={() => setShowManualLogin(true)}
-                style={{ backgroundColor: 'var(--primary)', color: 'white' }}
-                className="w-full font-semibold py-4 px-6 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-              >
-                학번과 이름으로 로그인
-              </button>
-            </div>
-          ) : (
+              <div>
+                <label htmlFor="studentId" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>학번</label>
+                <input
+                  type="text"
+                  id="studentId"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+                  className="w-full px-4 py-3 border-2 rounded-xl outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--secondary)]"
+                  placeholder="학번을 입력하세요"
+                  disabled={isLoading}
+                />
+              </div>
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>이름</label>
+                <input
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+                  className="w-full px-4 py-3 border-2 rounded-xl outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--secondary)]"
+                  placeholder="이름을 입력하세요"
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await signOut(auth);
+                    } catch (e) {
+                      console.warn('signOut failed', e);
+                    }
+                    setPendingGoogleUser(null);
+                    setStudentId('');
+                    setName('');
+                    setError('');
+                  }}
+                  className="flex-1 font-semibold py-3 px-6 rounded-xl border-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ borderColor: 'var(--secondary)', color: 'var(--secondary)', backgroundColor: 'var(--card-bg)' }}
+                  disabled={isLoading}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  style={{ backgroundColor: 'var(--primary)', color: '#fff' }}
+                  className="flex-1 font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {isLoading ? '저장 중...' : '정보 제출'}
+                </button>
+              </div>
+            </form>
+          ) : !showManualLogin ? (
             <form onSubmit={handleManualLogin} className="space-y-4">
               <div>
                 <label htmlFor="studentId" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>학번</label>
