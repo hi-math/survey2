@@ -137,7 +137,6 @@ export default function Home() {
       <CustomSurvey
         key={initialSurveyData ? JSON.stringify(initialSurveyData) : "empty"}
         initialData={initialSurveyData}
-        collectStudentInfo={userLoginMethod === "google"}
         onSubmit={handleSurveySubmit}
       />
     </div>
