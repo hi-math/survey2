@@ -40,7 +40,7 @@ export default function Home() {
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
         const data = snap.exists() ? snap.data() : null;
-        setNeedsUserInfo(!snap.exists() || !data?.displayName);
+        setNeedsUserInfo(!snap.exists() || !data?.displayName || !data?.studentId);
         setUserLoginMethod(data == null ? null : data.loginMethod === "manual" ? "manual" : "google");
       } catch {
         setNeedsUserInfo(true);
@@ -137,6 +137,7 @@ export default function Home() {
       <CustomSurvey
         key={initialSurveyData ? JSON.stringify(initialSurveyData) : "empty"}
         initialData={initialSurveyData}
+        collectStudentInfo={userLoginMethod === "google"}
         onSubmit={handleSurveySubmit}
       />
     </div>

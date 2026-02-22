@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { signInWithPopup, signInWithRedirect, signInAnonymously, setPersistence, browserSessionPersistence, getRedirectResult, signOut, type User } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, signInAnonymously, setPersistence, browserSessionPersistence, getRedirectResult } from 'firebase/auth';
 import { auth, googleProvider, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -47,7 +47,6 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
   const [showManualLogin, setShowManualLogin] = useState(false);
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
-  const [pendingGoogleUser, setPendingGoogleUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -67,10 +66,15 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       .then(async (result) => {
         if (result?.user) {
           console.log('[구글 로그인] redirect 성공:', result.user.uid);
-          // 사용자에게 학번/이름을 입력받은 뒤에 Firestore에 저장하도록 대기 상태로 전환
-          setPendingGoogleUser(result.user);
-          setName(result.user.displayName ?? '');
-          setStudentId('');
+          const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
+          await setDoc(doc(db, 'users', result.user.uid), {
+            email: result.user.email,
+            displayName: result.user.displayName ?? '',
+            photoURL: result.user.photoURL,
+            loginMethod: 'google',
+            course: courseLabel,
+            createdAt: new Date(),
+          });
         }
       })
       .catch((err) => {
@@ -105,10 +109,15 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       // 모든 환경에서 signInWithPopup 사용 (signInWithRedirect는 최신 브라우저에서 third-party cookie 차단으로 실패함)
       const result = await signInWithPopup(auth, googleProvider);
       if (result?.user) {
-        // 바로 저장하지 말고 학번/이름 입력을 요청
-        setPendingGoogleUser(result.user);
-        setName(result.user.displayName ?? '');
-        setStudentId('');
+        const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
+        await setDoc(doc(db, 'users', result.user.uid), {
+          email: result.user.email,
+          displayName: result.user.displayName ?? '',
+          photoURL: result.user.photoURL,
+          loginMethod: 'google',
+          course: courseLabel,
+          createdAt: new Date(),
+        });
       }
     } catch (err: unknown) {
       const code = err && typeof err === 'object' && 'code' in err ? (err as { code?: string }).code : undefined;
@@ -128,37 +137,6 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
 
       const detail = code ? `[${code}] ${message}` : message;
       setError(`구글 로그인 실패. ${detail}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGoogleInfoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pendingGoogleUser) return;
-    if (!studentId.trim() || !name.trim()) {
-      setError('학번과 이름을 모두 입력해주세요.');
-      return;
-    }
-    try {
-      setIsLoading(true);
-      setError('');
-      const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
-      await setDoc(doc(db, 'users', pendingGoogleUser.uid), {
-        uid: pendingGoogleUser.uid,
-        email: pendingGoogleUser.email,
-        displayName: name.trim(),
-        photoURL: pendingGoogleUser.photoURL,
-        studentId: studentId.trim(),
-        loginMethod: 'google',
-        course: courseLabel,
-        createdAt: new Date(),
-      });
-      setPendingGoogleUser(null);
-      setStudentId('');
-    } catch (err) {
-      console.error('[구글 로그인] 정보 저장 오류:', err);
-      setError('정보 저장에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -276,69 +254,7 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
             </div>
           )}
 
-          {pendingGoogleUser ? (
-            <form onSubmit={handleGoogleInfoSubmit} className="space-y-4">
-              <div className="text-sm" style={{ color: 'var(--text)' }}>
-                <p className="m-0 mb-2">구글 계정으로 로그인되었습니다:</p>
-                <p className="m-0 mb-3 font-medium">{pendingGoogleUser.email}</p>
-              </div>
-              <div>
-                <label htmlFor="studentId" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>학번</label>
-                <input
-                  type="text"
-                  id="studentId"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
-                  className="w-full px-4 py-3 border-2 rounded-xl outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--secondary)]"
-                  placeholder="학번을 입력하세요"
-                  disabled={isLoading}
-                />
-              </div>
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>이름</label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
-                  className="w-full px-4 py-3 border-2 rounded-xl outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--secondary)]"
-                  placeholder="이름을 입력하세요"
-                  disabled={isLoading}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await signOut(auth);
-                    } catch (e) {
-                      console.warn('signOut failed', e);
-                    }
-                    setPendingGoogleUser(null);
-                    setStudentId('');
-                    setName('');
-                    setError('');
-                  }}
-                  className="flex-1 font-semibold py-3 px-6 rounded-xl border-2 transition-opacity hover:opacity-90 disabled:opacity-50"
-                  style={{ borderColor: 'var(--secondary)', color: 'var(--secondary)', backgroundColor: 'var(--card-bg)' }}
-                  disabled={isLoading}
-                >
-                  취소
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  style={{ backgroundColor: 'var(--primary)', color: '#fff' }}
-                  className="flex-1 font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {isLoading ? '저장 중...' : '정보 제출'}
-                </button>
-              </div>
-            </form>
-          ) : !showManualLogin ? (
+          {!showManualLogin ? (
             <form onSubmit={handleManualLogin} className="space-y-4">
               <div>
                 <label htmlFor="studentId" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>학번</label>
