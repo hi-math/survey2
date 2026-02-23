@@ -116,9 +116,11 @@ export default function SurveySection2({
           </tbody>
         </table>
         {errors.science_attitude && (
-          <p className="mt-2 text-sm" style={{ color: "var(--primary)" }}>
-            {errors.science_attitude}
-          </p>
+          <div className="mt-3 p-3 rounded-lg" style={{ backgroundColor: 'rgba(254,226,226,0.4)', border: '1px solid #f87171' }}>
+            <p className="text-xs m-0" style={{ color: "#ef4444" }}>
+              {errors.science_attitude}
+            </p>
+          </div>
         )}
       </div>
     </div>

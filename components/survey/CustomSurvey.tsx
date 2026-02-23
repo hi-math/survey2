@@ -7,11 +7,13 @@ import SurveySection2 from "./SurveySection2";
 
 interface CustomSurveyProps {
   initialData?: SurveyData | null;
+  savedUserInfo?: { displayName?: string; studentId?: string };
   onSubmit: (data: SurveyData) => Promise<void>;
 }
 
 export default function CustomSurvey({
   initialData,
+  savedUserInfo,
   onSubmit,
 }: CustomSurveyProps) {
   const [data, setData] = useState<SurveyData>(() => ({
@@ -37,7 +39,7 @@ export default function CustomSurvey({
     );
     if (missing.length > 0) {
       setErrors({
-        science_attitude: "모든 문항에 응답해 주세요. (미응답 행이 있습니다)",
+        science_attitude: "모든 문항에 응답해주세요",
       });
       return false;
     }

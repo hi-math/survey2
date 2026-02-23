@@ -20,6 +20,7 @@ export default function Home() {
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [initialSurveyData, setInitialSurveyData] = useState<SurveyData | null>(null);
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null);
+  const [savedUserInfo, setSavedUserInfo] = useState<{ displayName?: string; studentId?: string }>({});
 
   // signInWithPopup 방식이므로 onAuthStateChanged만으로 충분
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function Home() {
       try {
         const snap = await getDoc(doc(db, "users", user.uid));
         const data = snap.exists() ? snap.data() : null;
+        setSavedUserInfo({ displayName: data?.displayName, studentId: data?.studentId });
         setNeedsUserInfo(!snap.exists() || !data?.displayName || !data?.studentId);
         setUserLoginMethod(data == null ? null : data.loginMethod === "manual" ? "manual" : "google");
       } catch {
@@ -52,10 +54,12 @@ export default function Home() {
 
   const handleSurveySubmit = async (data: SurveyData) => {
     if (!user) return;
-    if (data.studentId?.trim() && data.displayName?.trim()) {
+    const finalDisplayName = data.displayName?.trim() || savedUserInfo.displayName || "";
+    const finalStudentId = data.studentId?.trim() || savedUserInfo.studentId || "";
+    if (finalDisplayName && finalStudentId) {
       await updateDoc(doc(db, "users", user.uid), {
-        studentId: data.studentId.trim(),
-        displayName: data.displayName.trim(),
+        studentId: finalStudentId,
+        displayName: finalDisplayName,
         updatedAt: new Date(),
       });
     }
@@ -66,7 +70,9 @@ export default function Home() {
       completedAt: new Date().toISOString(),
       scoreTotal: result.total,
       scoreGrade: result.grade,
-      ...data,
+      studentId: finalStudentId,
+      displayName: finalDisplayName,
+      science_attitude: data.science_attitude,
     });
     setSurveyCompleted(true);
   };
@@ -98,7 +104,12 @@ export default function Home() {
     return (
       <UserInfoForm
         userId={user.uid}
-        onComplete={() => setNeedsUserInfo(false)}
+        onComplete={async () => {
+          const snap = await getDoc(doc(db, "users", user.uid));
+          const userData = snap.exists() ? snap.data() : null;
+          setSavedUserInfo({ displayName: userData?.displayName, studentId: userData?.studentId });
+          setNeedsUserInfo(false);
+        }}
       />
     );
   }
