@@ -48,9 +48,10 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
   const [studentId, setStudentId] = useState('');
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ studentId?: boolean; name?: boolean }>({});
 
-  const displayError = error || initialError || '';
+  const displayError = loginError || initialError || '';
 
   // 인앱 브라우저(카카오톡 등)에서는 버튼 없이 자동으로 외부 브라우저 열기 시도
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
         const message = err instanceof Error ? err.message : JSON.stringify(err);
         console.error('[구글 로그인] redirect 결과 오류:', { code, message });
         if (code && code !== 'auth/popup-closed-by-user') {
-          setError(`구글 로그인 실패. [${code}] ${message}`);
+          setLoginError(`구글 로그인 실패. [${code}] ${message}`);
         }
       });
   }, []);
@@ -102,7 +103,7 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
     if (isInAppBrowser()) return;
     try {
       setIsLoading(true);
-      setError('');
+      setLoginError('');
       onClearError?.();
       await setPersistence(auth, browserSessionPersistence);
 
@@ -136,7 +137,7 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       }
 
       const detail = code ? `[${code}] ${message}` : message;
-      setError(`구글 로그인 실패. ${detail}`);
+      setLoginError(`구글 로그인 실패. ${detail}`);
     } finally {
       setIsLoading(false);
     }
@@ -144,13 +145,16 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
 
   const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!studentId.trim() || !name.trim()) {
-      setError('학번과 이름을 모두 입력해주세요.');
+    const errs: { studentId?: boolean; name?: boolean } = {};
+    if (!studentId.trim()) errs.studentId = true;
+    if (!name.trim()) errs.name = true;
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
     try {
       setIsLoading(true);
-      setError('');
+      setLoginError('');
       await setPersistence(auth, browserSessionPersistence);
       const result = await signInAnonymously(auth);
       const courseLabel = COURSE_OPTIONS.find((o) => o.value === course)?.label ?? course;
@@ -163,7 +167,7 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
       });
     } catch (err) {
       console.error('Manual login error:', err);
-      setError('로그인에 실패했습니다. 다시 시도해주세요.');
+      setLoginError('로그인에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
     }
@@ -312,12 +316,16 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
                   type="text"
                   id="studentId"
                   value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+                  onChange={(e) => { setStudentId(e.target.value); setFieldErrors((p) => ({ ...p, studentId: false })); }}
+                  style={{
+                    borderColor: fieldErrors.studentId ? '#f87171' : 'var(--border)',
+                    backgroundColor: fieldErrors.studentId ? 'rgba(254,226,226,0.4)' : 'var(--card-bg)',
+                  }}
                   className="w-full px-4 py-3 border-2 rounded-xl outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--secondary)]"
                   placeholder="학번을 입력하세요"
                   disabled={isLoading}
                 />
+                {fieldErrors.studentId && <p className="text-xs mt-1" style={{ color: '#ef4444' }}>학번을 입력하세요</p>}
               </div>
               <div>
                 <label htmlFor="name" className="block text-sm font-medium mb-2" style={{ color: 'var(--text)' }}>이름</label>
@@ -325,17 +333,22 @@ export default function LoginPage({ initialError = null, onClearError }: LoginPa
                   type="text"
                   id="name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--card-bg)' }}
+                  onChange={(e) => { setName(e.target.value); setFieldErrors((p) => ({ ...p, name: false })); }}
+                  style={{
+                    borderColor: fieldErrors.name ? '#f87171' : 'var(--border)',
+                    backgroundColor: fieldErrors.name ? 'rgba(254,226,226,0.4)' : 'var(--card-bg)',
+                  }}
                   className="w-full px-4 py-3 border-2 rounded-xl outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--secondary)]"
                   placeholder="이름을 입력하세요"
                   disabled={isLoading}
                 />
+                {fieldErrors.name && <p className="text-xs mt-1" style={{ color: '#ef4444' }}>이름을 입력하세요</p>}
               </div>
+              {loginError && <p className="text-xs" style={{ color: '#ef4444' }}>{loginError}</p>}
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setShowManualLogin(false); setError(''); setStudentId(''); setName(''); }}
+                  onClick={() => { setShowManualLogin(false); setLoginError(''); setFieldErrors({}); setStudentId(''); setName(''); }}
                   className="flex-1 font-semibold py-3 px-6 rounded-xl border-2 transition-opacity hover:opacity-90 disabled:opacity-50"
                   style={{ borderColor: 'var(--secondary)', color: 'var(--secondary)', backgroundColor: 'var(--card-bg)' }}
                   disabled={isLoading}
